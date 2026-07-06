@@ -1,4 +1,7 @@
 import logging
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 
@@ -16,7 +19,26 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = "8881559887:AAFTu4O8dsdBn1Ov1KbKi8SJbrdDRxciN8k"
 
 
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'OK')
+
+    def log_message(self, format, *args):
+        pass  # evite de polluer les logs avec chaque requete de health check
+
+
+def run_health_check_server():
+    port = int(os.environ.get('PORT', 8080))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server.serve_forever()
+
+
 def main():
+    threading.Thread(target=run_health_check_server, daemon=True).start()
+
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler('start', start_command))
