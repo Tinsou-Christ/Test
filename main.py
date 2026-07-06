@@ -12,6 +12,7 @@ from handlers.pinterest import pinterest_command, pinterest_next_callback
 from handlers.lifeai import lifeai_command, lifeai_reply_handler
 from handlers.lyrics import lyrics_command
 from handlers.sing import sing_command, sing_callback
+from handlers.youtube import youtube_command, youtube_callback
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -53,6 +54,8 @@ def main():
     app.add_handler(CallbackQueryHandler(pinterest_next_callback, pattern=r'^pin_next:'))
     app.add_handler(CommandHandler(['sing', 'music'], sing_command))
     app.add_handler(CallbackQueryHandler(sing_callback, pattern=r'^sing:'))
+    app.add_handler(CommandHandler(['youtube', 'ytb'], youtube_command))
+    app.add_handler(CallbackQueryHandler(youtube_callback, pattern=r'^ytb:'))
     app.add_handler(MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, lifeai_reply_handler))
     
     logger.info('Bot demarre, polling en cours...')
