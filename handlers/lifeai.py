@@ -12,9 +12,14 @@ logger = logging.getLogger(__name__)
 API_ENDPOINT = "https://celestin-api.onrender.com/api/v1/copilot"
 
 MAX_HISTORY_MESSAGES = 12  # nombre de messages (user+IA) gardes en memoire par utilisateur
+MAX_TRACKED_MESSAGES = 2000  # nombre max de messages LifeIA suivis pour la fonction "reply"
 
 # historique de conversation en memoire, par utilisateur (perdu au redemarrage du bot)
 _conversations = {}
+
+# message_id (envoye par le bot) -> user_id qui a lance la conversation
+# permet de savoir si un message auquel on repond fait partie d'une conversation LifeIA
+_lifeai_message_ids = {}
 
 BOLD_MAP = {
     'a': '𝗮', 'b': '𝗯', 'c': '𝗰', 'd': '𝗱', 'e': '𝗲', 'f': '𝗳', 'g': '𝗴', 'h': '𝗵', 'i': '𝗶',
@@ -42,13 +47,8 @@ def _format_response(text: str) -> str:
     if not text:
         return text
 
-    # transforme **mot important** en gras unicode au lieu de le supprimer
     text = re.sub(r'\*\*(.+?)\*\*', lambda m: _to_bold_unicode(m.group(1)), text)
-
-    # supprime les titres markdown (#, ##, ###...)
     text = re.sub(r'#+\s*', '', text)
-
-    # supprime les * simples restants (listes, italique, etc.)
     text = text.replace('*', '')
 
     return text.strip()
@@ -60,6 +60,20 @@ def _get_history(user_id: int):
 
 def _reset_history(user_id: int):
     _conversations[user_id] = []
+
+
+def _track_message(message_id: int, user_id: int):
+    if len(_lifeai_message_ids) >= MAX_TRACKED_MESSAGES:
+        # on retire le plus ancien pour eviter une croissance infinie en memoire
+        oldest_key = next(iter(_lifeai_message_ids))
+        _lifeai_message_ids.pop(oldest_key, None)
+
+    _lifeai_message_ids[message_id] = user_id
+
+
+def is_lifeai_reply(update: Update) -> bool:
+    replied = update.message.reply_to_message if update.message else None
+    return bool(replied and replied.message_id in _lifeai_message_ids)
 
 
 def _build_prompt(user_id: int, new_message: str) -> str:
@@ -94,23 +108,10 @@ def _call_api(prompt: str) -> str:
     return data.get("data", {}).get("answer", "").strip()
 
 
-async def lifeai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def _process_message(update: Update, context: ContextTypes.DEFAULT_TYPE, user_message: str):
     await context.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
 
     user_id = update.effective_user.id
-    user_message = ' '.join(context.args).strip()
-
-    if user_message.lower() in ('reset', 'clear'):
-        _reset_history(user_id)
-        await update.message.reply_text('♻️ Conversation réinitialisée.')
-        return
-
-    if not user_message:
-        await update.message.reply_text(
-            "💬 Utilisation :\n/lifeai ta question\n/lifeai reset pour effacer l'historique"
-        )
-        return
-
     history = _get_history(user_id)
     prompt = _build_prompt(user_id, user_message)
 
@@ -127,4 +128,36 @@ async def lifeai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     history.append({"role": "assistant", "content": raw_answer})
     _conversations[user_id] = history[-MAX_HISTORY_MESSAGES:]
 
-    await update.message.reply_text(answer)
+    sent_message = await update.message.reply_text(answer)
+    _track_message(sent_message.message_id, user_id)
+
+
+async def lifeai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_message = ' '.join(context.args).strip()
+
+    if user_message.lower() in ('reset', 'clear'):
+        _reset_history(user_id)
+        await update.message.reply_text('♻️ Conversation réinitialisée.')
+        return
+
+    if not user_message:
+        await update.message.reply_text(
+            "💬 Utilisation :\n/lifeai ta question\n/lifeai reset pour effacer l'historique\n\n"
+            "Astuce : réponds directement à un message de LifeIA pour continuer la conversation "
+            "sans retaper /lifeai."
+        )
+        return
+
+    await _process_message(update, context, user_message)
+
+
+async def lifeai_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_lifeai_reply(update):
+        return
+
+    user_message = (update.message.text or '').strip()
+    if not user_message:
+        return
+
+    await _process_message(update, context, user_message)
