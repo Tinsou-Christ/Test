@@ -9,7 +9,8 @@ from handlers.start import start_command
 from handlers.alldl import alldl_command
 from handlers.gem import gem_command
 from handlers.pinterest import pinterest_command, pinterest_next_callback
-from handlers.lifeai import lifeai_command
+from telegram.ext import MessageHandler, filters
+from handlers.lifeai import lifeai_command, lifeai_reply_handler
 from handlers.lyrics import lyrics_command
 
 logging.basicConfig(
@@ -44,7 +45,8 @@ def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler('start', start_command))
-    app.add_handler(CommandHandler(['lifeai', 'ia'], lifeai_command))
+    app.add_handler(CommandHandler('lifeai', lifeai_command))
+app.add_handler(MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, lifeai_reply_handler))
     app.add_handler(CommandHandler(['alldl', 'dl'], alldl_command))
     app.add_handler(CommandHandler('gem', gem_command))
     app.add_handler(CommandHandler(['pinterest', 'pin'], pinterest_command))
