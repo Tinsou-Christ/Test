@@ -1,5 +1,4 @@
 import logging
-import os
 
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 
@@ -14,13 +13,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN')
+BOT_TOKEN = "8881559887:AAFTu4O8dsdBn1Ov1KbKi8SJbrdDRxciN8k"
 
 
 def main():
-    if not BOT_TOKEN:
-        raise RuntimeError('La variable d\'environnement BOT_TOKEN n\'est pas definie')
-
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler('start', start_command))
@@ -35,4 +31,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-  
