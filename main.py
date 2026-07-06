@@ -9,6 +9,7 @@ from handlers.start import start_command
 from handlers.alldl import alldl_command
 from handlers.gem import gem_command
 from handlers.pinterest import pinterest_command, pinterest_next_callback
+from handlers.lifeai import lifeai_command
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -42,6 +43,7 @@ def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler('start', start_command))
+    app.add_handler(CommandHandler(['lifeai', 'ia'], lifeai_command))
     app.add_handler(CommandHandler(['alldl', 'dl'], alldl_command))
     app.add_handler(CommandHandler('gem', gem_command))
     app.add_handler(CommandHandler(['pinterest', 'pin'], pinterest_command))
