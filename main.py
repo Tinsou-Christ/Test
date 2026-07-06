@@ -51,13 +51,15 @@ def main():
     app.add_handler(CommandHandler('gem', gem_command))
     app.add_handler(CommandHandler(['pinterest', 'pin'], pinterest_command))
     app.add_handler(CommandHandler(['lyrics', 'songlyrics'], lyrics_command))
-    app.add_handler(CallbackQueryHandler(pinterest_next_callback, pattern=r'^pin_next:'))
     app.add_handler(CommandHandler(['sing', 'music'], sing_command))
-    app.add_handler(CallbackQueryHandler(sing_callback, pattern=r'^sing:'))
     app.add_handler(CommandHandler(['youtube', 'ytb'], youtube_command))
+
+    app.add_handler(CallbackQueryHandler(pinterest_next_callback, pattern=r'^pin_next:'))
+    app.add_handler(CallbackQueryHandler(sing_callback, pattern=r'^sing:'))
     app.add_handler(CallbackQueryHandler(youtube_callback, pattern=r'^ytb:'))
+
     app.add_handler(MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, lifeai_reply_handler))
-    
+
     logger.info('Bot demarre, polling en cours...')
     app.run_polling(allowed_updates=['message', 'callback_query'])
 
