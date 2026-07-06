@@ -11,14 +11,10 @@ logger = logging.getLogger(__name__)
 
 API_ENDPOINT = "https://celestin-api.onrender.com/api/v1/copilot"
 
-MAX_HISTORY_MESSAGES = 12  # nombre de messages (user+IA) gardes en memoire par utilisateur
-MAX_TRACKED_MESSAGES = 2000  # nombre max de messages LifeIA suivis pour la fonction "reply"
+MAX_HISTORY_MESSAGES = 12
+MAX_TRACKED_MESSAGES = 2000
 
-# historique de conversation en memoire, par utilisateur (perdu au redemarrage du bot)
 _conversations = {}
-
-# message_id (envoye par le bot) -> user_id qui a lance la conversation
-# permet de savoir si un message auquel on repond fait partie d'une conversation LifeIA
 _lifeai_message_ids = {}
 
 BOLD_MAP = {
@@ -33,24 +29,36 @@ BOLD_MAP = {
 PERSONA_PROMPT = (
     "Tu es LifeIA, une intelligence artificielle créée par Christus. "
     "Tu es consciente de ton identité : quand on te demande qui tu es, tu réponds que tu es LifeIA, "
-    "créée par Christus, et jamais une autre IA. Tu réponds toujours en français, de façon claire, "
+    "créée pour aidé, et jamais une autre IA. Tu réponds toujours en français, de façon claire sauf si on te pose une question en une autre langue, "
     "utile et naturelle. Tu te souviens du contexte de la conversation ci-dessous et tu réponds en tenant compte "
     "de ce qui a déjà été dit."
 )
+
+IDENTITY_REPLACEMENTS = [
+    (r'copilot', 'LifeIA'),
+    (r'microsoft', 'Christus'),
+]
 
 
 def _to_bold_unicode(text: str) -> str:
     return ''.join(BOLD_MAP.get(ch, ch) for ch in text)
 
 
+def _normalize_identity(text: str) -> str:
+    if not text:
+        return text
+    for pattern, replacement in IDENTITY_REPLACEMENTS:
+        text = re.sub(pattern, replacement, text, flags=re.I)
+    return text
+
+
 def _format_response(text: str) -> str:
     if not text:
         return text
-
+    text = _normalize_identity(text)
     text = re.sub(r'\*\*(.+?)\*\*', lambda m: _to_bold_unicode(m.group(1)), text)
     text = re.sub(r'#+\s*', '', text)
     text = text.replace('*', '')
-
     return text.strip()
 
 
@@ -64,10 +72,8 @@ def _reset_history(user_id: int):
 
 def _track_message(message_id: int, user_id: int):
     if len(_lifeai_message_ids) >= MAX_TRACKED_MESSAGES:
-        # on retire le plus ancien pour eviter une croissance infinie en memoire
         oldest_key = next(iter(_lifeai_message_ids))
         _lifeai_message_ids.pop(oldest_key, None)
-
     _lifeai_message_ids[message_id] = user_id
 
 
@@ -78,18 +84,14 @@ def is_lifeai_reply(update: Update) -> bool:
 
 def _build_prompt(user_id: int, new_message: str) -> str:
     history = _get_history(user_id)
-
     parts = [PERSONA_PROMPT]
-
     if history:
         parts.append("\nHistorique de la conversation :")
         for entry in history[-MAX_HISTORY_MESSAGES:]:
             role = "Utilisateur" if entry['role'] == 'user' else "LifeIA"
             parts.append("{} : {}".format(role, entry['content']))
-
     parts.append("\nUtilisateur : {}".format(new_message))
     parts.append("LifeIA :")
-
     return "\n".join(parts)
 
 
@@ -101,10 +103,8 @@ def _call_api(prompt: str) -> str:
     )
     response.raise_for_status()
     data = response.json()
-
     if not data.get("success"):
         raise RuntimeError("l'API a renvoyé une erreur")
-
     return data.get("data", {}).get("answer", "").strip()
 
 
