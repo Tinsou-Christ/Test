@@ -26,24 +26,32 @@ def extract_youtube_url(text):
 
 
 def _search_songs(query: str):
-    response = requests.get(
-        "{}/ytsearch".format(BASE_URL),
-        params={"q": query},
-        timeout=30
-    )
-    response.raise_for_status()
-    data = response.json()
-    return (data.get("results") or [])[:5]
+    try:
+        response = requests.get(
+            "{}/ytsearch".format(BASE_URL),
+            params={"q": query},
+            timeout=30
+        )
+        response.raise_for_status()
+        data = response.json()
+        return (data.get("results") or [])[:5]
+    except requests.exceptions.RequestException as e:
+        logger.error('search request error: %s', str(e))
+        raise
 
 
 def _fetch_download_url(youtube_url: str) -> dict:
-    response = requests.get(
-        "{}/ytmp3".format(BASE_URL),
-        params={"url": youtube_url},
-        timeout=60
-    )
-    response.raise_for_status()
-    return response.json()
+    try:
+        response = requests.get(
+            "{}/ytmp3".format(BASE_URL),
+            params={"url": youtube_url},
+            timeout=60
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error('download request error: %s', str(e))
+        raise
 
 
 async def _cleanup_wait_message(context, chat_id, wait_msg):
@@ -78,8 +86,8 @@ async def _download_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE,
             await _cleanup_wait_message(context, chat_id, wait_msg)
             
             # Analyser l'erreur retournée par l'API
-            error_msg = data.get("error", "") if data else ""
-            error_lower = error_msg.lower()
+            error_msg = data.get("error") or data.get("message") or ""
+            error_lower = str(error_msg).lower()
 
             # Erreur de taille
             if "size" in error_lower or "large" in error_lower or "25" in error_lower or "limit" in error_lower:
@@ -127,7 +135,7 @@ async def _download_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 return
 
             # Erreur générique avec détails
-            error_display = error_msg[:150] if error_msg else "Erreur inconnue"
+            error_display = str(error_msg)[:150] if error_msg else "Erreur inconnue"
             await context.bot.send_message(
                 chat_id,
                 f"⚠️ Erreur: {error_display}\n"
@@ -164,7 +172,7 @@ async def _download_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE,
             else:
                 await context.bot.send_message(
                     chat_id,
-                    f"⚠️ Erreur lors de l'envoi: {send_error[:100]}\n"
+                    f"⚠️ Erreur lors de l'envoi: {str(send_error)[:100]}\n"
                     "🔄 Réessayez ou contactez le support."
                 )
             return
@@ -239,6 +247,14 @@ async def _download_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 chat_id,
                 "❌ Vidéo introuvable ou supprimée.\n"
                 "🔄 Essayez un autre lien."
+            )
+        elif "badrequest" in error_str or "not subscriptable" in error_str:
+            # Gestion spécifique de l'erreur BadRequest
+            await context.bot.send_message(
+                chat_id,
+                "⚠️ Erreur de communication avec l'API.\n"
+                "🔄 Réessayez dans quelques instants.\n"
+                "💡 Si le problème persiste, essayez un autre lien."
             )
         else:
             # Message d'erreur générique mais informatif
@@ -347,4 +363,4 @@ async def sing_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _download_and_send(
         update, context, update.effective_chat.id,
         selected.get("url"), selected.get("duration", "N/A")
-                            )
+            )
