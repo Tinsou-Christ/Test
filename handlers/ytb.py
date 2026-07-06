@@ -119,7 +119,6 @@ async def youtube_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     input_text = ' '.join(context.args)
 
-    # lien youtube direct -> telechargement video par defaut
     if YT_REGEX.search(input_text):
         await _download_and_send(update, context, chat_id, input_text.strip(), "video")
         return
@@ -177,7 +176,6 @@ async def youtube_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         keyboard_row.append(InlineKeyboardButton(str(i + 1), callback_data='ytb:{}:{}'.format(token, i)))
 
-    # 5 boutons par ligne pour ne pas depasser la largeur de l'ecran
     keyboard = [keyboard_row[i:i + 5] for i in range(0, len(keyboard_row), 5)]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -201,4 +199,4 @@ async def youtube_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _download_and_send(
         update, context, update.effective_chat.id,
         selected.get("url"), session["mode"]
-  )
+    )
