@@ -26,14 +26,6 @@ BOLD_MAP = {
     'S': '𝗦', 'T': '𝗧', 'U': '𝗨', 'V': '𝗩', 'W': '𝗪', 'X': '𝗫', 'Y': '𝗬', 'Z': '𝗭',
 }
 
-PERSONA_PROMPT = (
-    "Tu es LifeIA, une intelligence artificielle créée par Christus. "
-    "Tu es consciente de ton identité : quand on te demande qui tu es, tu réponds que tu es LifeIA, "
-    "créée pour aidé, et jamais une autre IA. Tu réponds toujours en français, de façon claire sauf si on te pose une question en une autre langue, "
-    "utile et naturelle. Tu te souviens du contexte de la conversation ci-dessous et tu réponds en tenant compte "
-    "de ce qui a déjà été dit."
-)
-
 IDENTITY_REPLACEMENTS = [
     (r'copilot', 'LifeIA'),
     (r'microsoft', 'Christus'),
@@ -84,14 +76,16 @@ def is_lifeai_reply(update: Update) -> bool:
 
 def _build_prompt(user_id: int, new_message: str) -> str:
     history = _get_history(user_id)
-    parts = [PERSONA_PROMPT]
+    parts = []
+
     if history:
-        parts.append("\nHistorique de la conversation :")
         for entry in history[-MAX_HISTORY_MESSAGES:]:
-            role = "Utilisateur" if entry['role'] == 'user' else "LifeIA"
+            role = "Utilisateur" if entry['role'] == 'user' else "Assistant"
             parts.append("{} : {}".format(role, entry['content']))
-    parts.append("\nUtilisateur : {}".format(new_message))
-    parts.append("LifeIA :")
+
+    parts.append("Utilisateur : {}".format(new_message))
+    parts.append("Assistant :")
+
     return "\n".join(parts)
 
 
