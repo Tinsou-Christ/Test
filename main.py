@@ -3,13 +3,12 @@ import os
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
 from handlers.start import start_command
 from handlers.alldl import alldl_command
 from handlers.gem import gem_command
 from handlers.pinterest import pinterest_command, pinterest_next_callback
-from telegram.ext import MessageHandler, filters
 from handlers.lifeai import lifeai_command, lifeai_reply_handler
 from handlers.lyrics import lyrics_command
 
@@ -30,7 +29,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.wfile.write(b'OK')
 
     def log_message(self, format, *args):
-        pass  # evite de polluer les logs avec chaque requete de health check
+        pass
 
 
 def run_health_check_server():
@@ -45,13 +44,13 @@ def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler('start', start_command))
-    app.add_handler(CommandHandler('lifeai', lifeai_command))
-app.add_handler(MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, lifeai_reply_handler))
+    app.add_handler(CommandHandler(['lifeai', 'ia'], lifeai_command))
     app.add_handler(CommandHandler(['alldl', 'dl'], alldl_command))
     app.add_handler(CommandHandler('gem', gem_command))
     app.add_handler(CommandHandler(['pinterest', 'pin'], pinterest_command))
     app.add_handler(CommandHandler(['lyrics', 'songlyrics'], lyrics_command))
     app.add_handler(CallbackQueryHandler(pinterest_next_callback, pattern=r'^pin_next:'))
+    app.add_handler(MessageHandler(filters.TEXT & filters.REPLY & ~filters.COMMAND, lifeai_reply_handler))
 
     logger.info('Bot demarre, polling en cours...')
     app.run_polling(allowed_updates=['message', 'callback_query'])
