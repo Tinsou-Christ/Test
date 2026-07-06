@@ -11,6 +11,8 @@ START_MESSAGE = (
     "/alldl &lt;url&gt; - Télécharger une vidéo (Facebook/TikTok/Instagram/YouTube)\n"
     "/gem &lt;prompt&gt; - Générer ou éditer une image IA\n"
     "/pinterest &lt;recherche&gt; - Rechercher des images sur Pinterest\n"
+    "/lifeai &lt;question&gt; - Discuter avec LifeIA\n"
+    "/lyrics &lt;chanson&gt; - Obtenir les paroles d'une chanson\n"
 )
 
 
