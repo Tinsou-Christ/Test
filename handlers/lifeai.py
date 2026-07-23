@@ -9,7 +9,7 @@ from telegram.ext import ContextTypes
 
 logger = logging.getLogger(__name__)
 
-API_ENDPOINT = "https://celestin-api.onrender.com/api/v1/copilot"
+API_ENDPOINT = "https://puruboy-api.vercel.app/api/ai/gemini"
 
 MAX_HISTORY_MESSAGES = 12
 MAX_TRACKED_MESSAGES = 2000
@@ -27,8 +27,8 @@ BOLD_MAP = {
 }
 
 IDENTITY_REPLACEMENTS = [
-    (r'copilot', 'LifeIA'),
-    (r'microsoft', 'Christus'),
+    (r'gemini', 'LifeIA'),
+    (r'google', 'Christus'),
 ]
 
 
@@ -90,16 +90,24 @@ def _build_prompt(user_id: int, new_message: str) -> str:
 
 
 def _call_api(prompt: str) -> str:
-    response = requests.get(
+    response = requests.post(
         API_ENDPOINT,
-        params={"message": prompt, "model": "default"},
+        json={"question": prompt},
         timeout=45
     )
     response.raise_for_status()
     data = response.json()
+    
     if not data.get("success"):
-        raise RuntimeError("l'API a renvoyé une erreur")
-    return data.get("data", {}).get("answer", "").strip()
+        raise RuntimeError("L'API a renvoyé une erreur")
+    
+    result = data.get("result", {})
+    answer = result.get("answer", "").strip()
+    
+    if not answer:
+        raise RuntimeError("Réponse vide de l'API")
+    
+    return answer
 
 
 async def _process_message(update: Update, context: ContextTypes.DEFAULT_TYPE, user_message: str):
