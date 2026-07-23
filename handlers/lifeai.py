@@ -17,13 +17,16 @@ MAX_TRACKED_MESSAGES = 2000
 _conversations = {}
 _lifeai_message_ids = {}
 
-BOLD_MAP = {
-    'a': '𝗮', 'b': '𝗯', 'c': '𝗰', 'd': '𝗱', 'e': '𝗲', 'f': '𝗳', 'g': '𝗴', 'h': '𝗵', 'i': '𝗶',
-    'j': '𝗷', 'k': '𝗸', 'l': '𝗹', 'm': '𝗺', 'n': '𝗻', 'o': '𝗼', 'p': '𝗽', 'q': '𝗾', 'r': '𝗿',
-    's': '𝘀', 't': '𝘁', 'u': '𝘂', 'v': '𝘃', 'w': '𝘄', 'x': '𝘅', 'y': '𝘆', 'z': '𝘇',
+LOWERCASE_MAP = {
+    'a': '𝖺', 'b': '𝖻', 'c': '𝖼', 'd': '𝖽', 'e': '𝖾', 'f': '𝖿', 'g': '𝗀', 'h': '𝗁', 'i': '𝗂',
+    'j': '𝗃', 'k': '𝗄', 'l': '𝗅', 'm': '𝗆', 'n': '𝗇', 'o': '𝗈', 'p': '𝗉', 'q': '𝗊', 'r': '𝗋',
+    's': '𝗌', 't': '𝗍', 'u': '𝗎', 'v': '𝗏', 'w': '𝗐', 'x': '𝗑', 'y': '𝗒', 'z': '𝗓'
+}
+
+UPPERCASE_MAP = {
     'A': '𝗔', 'B': '𝗕', 'C': '𝗖', 'D': '𝗗', 'E': '𝗘', 'F': '𝗙', 'G': '𝗚', 'H': '𝗛', 'I': '𝗜',
     'J': '𝗝', 'K': '𝗞', 'L': '𝗟', 'M': '𝗠', 'N': '𝗡', 'O': '𝗢', 'P': '𝗣', 'Q': '𝗤', 'R': '𝗥',
-    'S': '𝗦', 'T': '𝗧', 'U': '𝗨', 'V': '𝗩', 'W': '𝗪', 'X': '𝗫', 'Y': '𝗬', 'Z': '𝗭',
+    'S': '𝗦', 'T': '𝗧', 'U': '𝗨', 'V': '𝗩', 'W': '𝗪', 'X': '𝗫', 'Y': '𝗬', 'Z': '𝗭'
 }
 
 IDENTITY_REPLACEMENTS = [
@@ -36,10 +39,16 @@ IDENTITY_REPLACEMENTS = [
     (r"je suis une intelligence artificielle", "Je suis LifeIA, une IA créée par Christus"),
 ]
 
-CREATOR_INFO = "\n\n👨‍💻 Créé par @Christus225"
-
-def _to_bold_unicode(text: str) -> str:
-    return ''.join(BOLD_MAP.get(ch, ch) for ch in text)
+def _to_styled_text(text: str) -> str:
+    result = []
+    for ch in text:
+        if ch in LOWERCASE_MAP:
+            result.append(LOWERCASE_MAP[ch])
+        elif ch in UPPERCASE_MAP:
+            result.append(UPPERCASE_MAP[ch])
+        else:
+            result.append(ch)
+    return ''.join(result)
 
 def _normalize_identity(text: str) -> str:
     if not text:
@@ -52,13 +61,10 @@ def _format_response(text: str) -> str:
     if not text:
         return text
     text = _normalize_identity(text)
-    text = re.sub(r'\*\*(.+?)\*\*', lambda m: _to_bold_unicode(m.group(1)), text)
+    text = re.sub(r'\*\*(.+?)\*\*', lambda m: _to_styled_text(m.group(1)), text)
     text = re.sub(r'#+\s*', '', text)
     text = text.replace('*', '')
-    
-    if "@Christus225" not in text:
-        text = text.strip() + CREATOR_INFO
-    
+    text = _to_styled_text(text)
     return text.strip()
 
 def _get_history(user_id: int):
@@ -113,7 +119,7 @@ async def _process_message(update: Update, context: ContextTypes.DEFAULT_TYPE, u
         raw_answer = await asyncio.to_thread(_call_api, prompt, user_id)
     except Exception as e:
         logger.error('lifeai error: %s', str(e))
-        await update.message.reply_text("❌ Une erreur est survenue en contactant LifeIA, réessaie plus tard.")
+        await update.message.reply_text("❌ 𝖴𝗇𝖾 𝖾𝗋𝗋𝖾𝗎𝗋 𝖾𝗌𝗍 𝗌𝗎𝗋𝗏𝖾𝗇𝗎𝖾 𝖾𝗇 𝖼𝗈𝗇𝗍𝖺𝖼𝗍𝖺𝗇𝗍 𝖫𝗂𝖿𝖾𝖨𝖠, 𝗋é𝖾𝗌𝗌𝖺𝗂𝖾 𝗉𝗅𝗎𝗌 𝗍𝖺𝗋𝖽.")
         return
 
     answer = _format_response(raw_answer)
@@ -132,18 +138,17 @@ async def lifeai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_message.lower() in ('reset', 'clear'):
         _reset_history(user_id)
-        await update.message.reply_text('♻️ Conversation réinitialisée.')
+        await update.message.reply_text('♻️ 𝖢𝗈𝗇𝗏𝖾𝗋𝗌𝖺𝗍𝗂𝗈𝗇 ré𝗂𝗇𝗂𝗍𝗂𝖺𝗅𝗂𝗌é𝖾.')
         return
 
     if not user_message:
         await update.message.reply_text(
-            "💬 LifeIA - Assistant Virtuel\n\n"
-            "Utilisation :\n"
-            "/lifeai ta question\n"
-            "/lifeai reset pour effacer l'historique\n\n"
-            "✨ Astuce : Réponds directement à un message de LifeIA pour continuer "
-            "la conversation sans retaper la commande.\n\n"
-            "👨‍💻 Créé par @Christus225"
+            "💬 𝖫𝗂𝖿𝖾𝖨𝖠 - 𝖠𝗌𝗌𝗂𝗌𝗍𝖺𝗇𝗍 𝖵𝗂𝗋𝗍𝗎𝖾𝗅\n\n"
+            "𝖴𝗍𝗂𝗅𝗂𝗌𝖺𝗍𝗂𝗈𝗇 :\n"
+            "/lifeai 𝗍𝖺 𝗊𝗎𝖾𝗌𝗍𝗂𝗈𝗇\n"
+            "/lifeai 𝗋𝖾𝗌𝖾𝗍 𝗉𝗈𝗎𝗋 𝖾𝖿𝖿𝖺𝖼𝖾𝗋 l'𝗁𝗂𝗌𝗍𝗈𝗋𝗂𝗊𝗎𝖾\n\n"
+            "✨ 𝖠𝗌𝗍𝗎𝖼𝖾 : Ré𝗉𝗈𝗇𝖽𝗌 𝖽𝗂𝗋𝖾𝖼𝗍𝖾𝗆𝖾𝗇𝗍 à 𝗎𝗇 𝗆𝖾𝗌𝗌𝖺𝗀𝖾 𝖽𝖾 𝖫𝗂𝖿𝖾𝖨𝖠 𝗉𝗈𝗎𝗋 𝖼𝗈𝗇𝗍𝗂𝗇𝗎𝖾𝗋 "
+            "𝗅𝖺 𝖼𝗈𝗇𝗏𝖾𝗋𝗌𝖺𝗍𝗂𝗈𝗇 𝗌𝖺𝗇𝗌 𝗋𝖾𝗍𝖺𝗉𝖾𝗋 𝗅𝖺 𝖼𝗈𝗆𝗆𝖺𝗇𝖽𝖾."
         )
         return
 
